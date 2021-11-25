@@ -78,11 +78,11 @@ def main():
             list(tqdm(executor.map(read_file, filenames), total=len(filenames)))
 
     MAX_THREADS = 25
-    df_review = pd.DataFrame
-    df_user = pd.DataFrame
-    df_business = pd.DataFrame
-    df_check = pd.DataFrame
-    df_advice = pd.DataFrame
+    df_review = None
+    df_user = None
+    df_business = None
+    df_check = None
+    df_advice = None
     start = time.time()
     file_names = {'review_data.csv', 'business_data.csv', 'user_data.csv', 'check_data.csv', 'advice_data_2.json'}
     concurrent_downloads(file_names)
@@ -93,25 +93,44 @@ def main():
          'like_fashion', 'like_extras', 'like_profile', 'like_format'
             , 'like_list', 'like_comment', 'like_simple', 'like_cool', 'like_fun', 'like_texts',
          'like_pics'], axis=1)
+    df_user=None
     df_business_reduced=df_business.drop(['lat', 'long', 'address', 'city', 'hours'], axis=1)
+    df_business=None
     df_advice_reduced=df_advice.drop(['date'], axis=1)
+    df_advice=None
     df_check_reduced=df_check.drop('date',axis=1)
+    df_check=None
     df_review_user = df_review_reduced.merge(df_user_reduced,how="inner",on="user_id")
     print("10%")
+    df_user_reduced=None
     df_review_user_business=df_review_user.merge(df_business_reduced,how='inner',on="business_id")
     print("30%")
+    df_business_reduced=None
+    df_review_user=None
     df_review_user_business_check = df_review_user_business.merge(df_check_reduced,how="inner",on="business_id")
     print("60%")
+    df_check_reduced=None
+    df_review_user_business=None
     df_review_user_business_check_advice = df_review_user_business_check.merge(df_advice_reduced,how="inner",on="user_id")
+    df_review_user_business_check=None
+    df_advice_reduced=None
     print("100%")
     print("Creating the json now...")
     print(df_review_user_business_check_advice)
-    tmpdf=df_review_user_business_check_advice.iloc[0:1000000]
+    tmpdf=df_review_user_business_check_advice.iloc[0:2000000]
     final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in tmpdf.items()])).fillna("Nan")
+    tmpdf=None
     with open('all_data.json', 'w') as f:
         json=js.dumps(final_df.to_dict(orient='records'),indent=0)
+        final_df=None
         f.write(json)
-
+    # final_df=None
+    # tmpdf = None
+    # tmpdf = df_review_user_business_check_advice.iloc[3000001:6000000]
+    # final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in tmpdf.items()])).fillna("Nan")
+    # with open('all_data_2.json', 'w') as f:
+    #     json = js.dumps(final_df.to_dict(orient='records'), indent=0)
+    #     f.write(json)
     end = time.time()
     print("json created")
     print("Time elapsed:", end - start, " seconds")
