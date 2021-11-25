@@ -8,6 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import time
 import json as js
+import gc
 
 # df_review=pd.read_csv("review_data.csv",dtype={'review_id':'string','user_id':'string','business_id':'string','rating':'float','useful':'float','fun':'float','cool':'float','description':'string','date':'string'})
 # df_user=pd.read_csv("user_data.csv",dtype={'user_id':'string','name':'string','num_reviews':'int','user_since':'string','useful':'int','fun':'int','cool':'int','expert':'string'
@@ -32,29 +33,29 @@ def main():
                                                'description': 'string', 'date': 'string'})
 
                 #df_review.fillna("No Value")
-                print(df_review)
+                #print(df_review)
             elif "user_data" in filename:
                 nonlocal df_user
-                df_user = pd.read_csv(filename, dtype={'user_id': 'string', 'name': 'string', 'num_reviews': 'int',
-                                                              'user_since': 'string', 'useful': 'int', 'fun': 'int',
-                                                              'cool': 'int', 'expert': 'string'
-                    , 'friends': 'string', 'followers': 'int', 'average_rating': 'float', 'like_fashion': 'string',
-                                                              'like_extras': 'string', 'like_profile': 'string',
-                                                              'like_format': 'string'
-                    , 'like_list': 'string', 'like_comment': 'string', 'like_simple': 'string', 'like_cool': 'string',
-                                                              'like_fun': 'string', 'like_texts': 'string',
-                                                              'like_pics': 'string'})
+                df_user = pd.read_csv(filename, dtype={'user_id': 'string', 'name': 'string', 'num_reviews': 'int8',
+                                                              'user_since': 'string', 'useful': 'int8', 'fun': 'int8',
+                                                              'cool': 'int8', 'expert': 'string'
+                    , 'friends': 'string', 'followers': 'int16', 'average_rating': 'float', 'like_fashion': 'int8',
+                                                              'like_extras': 'int8', 'like_profile': 'int8',
+                                                              'like_format': 'int8'
+                    , 'like_list': 'string', 'like_comment': 'int16', 'like_simple': 'int8', 'like_cool': 'int8',
+                                                              'like_fun': 'int8', 'like_texts': 'int8',
+                                                              'like_pics': 'int8'})
 
 
                 #df_user.fillna("no value")
-                print(df_user)
+                #print(df_user)
             elif "business_data" in filename:
                 nonlocal df_business
                 df_business = pd.read_csv(filename,
                                           dtype={'business_id': 'string', 'name': 'string', 'address': 'string',
                                                  'city': 'string',
                                                  'state': 'string', 'zipcode': 'string', 'lat': 'float', 'long': 'float',
-                                                 'rating': 'float', 'num_reviews': 'string', 'open': 'string'
+                                                 'rating': 'float', 'num_reviews': 'int16', 'open': 'int8'
                                               , 'attributes': 'string', 'categories': 'string', 'hours': 'string'})
 
                 #df_business.fillna("no value")
@@ -63,13 +64,13 @@ def main():
                 nonlocal df_check
                 df_check = pd.read_csv(filename)
                 #df_check.fillna("no value")
-                print(df_check)
+                #print(df_check)
         else:
             nonlocal df_advice
             df_advice = pd.read_json(filename)
 
             #df_advice.fillna("no value")
-            print(df_advice)
+            #print(df_advice)
     def concurrent_downloads(filenames):
         # choose the number of threads
         threads = min(MAX_THREADS, len(filenames))
@@ -104,32 +105,40 @@ def main():
     print("10%")
     df_user_reduced=None
     df_review_user_business=df_review_user.merge(df_business_reduced,how='inner',on="business_id")
-    print("30%")
+    print("25%")
     df_business_reduced=None
     df_review_user=None
     df_review_user_business_check = df_review_user_business.merge(df_check_reduced,how="inner",on="business_id")
-    print("60%")
+    print("50%")
     df_check_reduced=None
     df_review_user_business=None
     df_review_user_business_check_advice = df_review_user_business_check.merge(df_advice_reduced,how="inner",on="user_id")
     df_review_user_business_check=None
     df_advice_reduced=None
+    gc.collect()
+    #print(df_review_user_business_check_advice)
+    tmpdf=df_review_user_business_check_advice.drop(['review_id','user_id','business_id_x','business_id_y'],axis=1).iloc[0:5000000]
+    df_review_user_business_check_advice=None
+    final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in tmpdf.items()])).fillna("Nan")
+    final_json=final_df.to_dict(orient='records')
+    print(final_df.info())
     print("100%")
     print("Creating the json now...")
-    print(df_review_user_business_check_advice)
-    tmpdf=df_review_user_business_check_advice.iloc[0:2000000]
-    final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in tmpdf.items()])).fillna("Nan")
+    final_df=None
     tmpdf=None
-    with open('all_data.json', 'w') as f:
-        json=js.dumps(final_df.to_dict(orient='records'),indent=0)
-        final_df=None
+    gc.collect()
+    with open('test.json', 'w') as f:
+        json=js.dumps(final_json,indent=0)
+        final_json=None
         f.write(json)
     # final_df=None
     # tmpdf = None
-    # tmpdf = df_review_user_business_check_advice.iloc[3000001:6000000]
+    # tmpdf = df_review_user_business_check_advice.df_review_user_business_check_advice.drop(['review_id','user_id','business_id_x','business_id_y'],axis=1).iloc[3000001:6000000]
     # final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in tmpdf.items()])).fillna("Nan")
+    # tmpdf=None
     # with open('all_data_2.json', 'w') as f:
     #     json = js.dumps(final_df.to_dict(orient='records'), indent=0)
+    #     final_df=None
     #     f.write(json)
     end = time.time()
     print("json created")
