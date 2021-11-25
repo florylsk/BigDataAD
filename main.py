@@ -97,21 +97,23 @@ def main():
     df_advice_reduced=df_advice.drop(['date'], axis=1)
     df_check_reduced=df_check.drop('date',axis=1)
     df_review_user = df_review_reduced.merge(df_user_reduced,how="inner",on="user_id")
-    print("20%")
+    print("10%")
     df_review_user_business=df_review_user.merge(df_business_reduced,how='inner',on="business_id")
-    print("50%")
+    print("30%")
     df_review_user_business_check = df_review_user_business.merge(df_check_reduced,how="inner",on="business_id")
-    print("80%")
+    print("60%")
     df_review_user_business_check_advice = df_review_user_business_check.merge(df_advice_reduced,how="inner",on="user_id")
     print("100%")
+    print("Creating the json now...")
     print(df_review_user_business_check_advice)
-    tmpdf=df_review_user_business_check_advice.iloc[0:2000000]
+    tmpdf=df_review_user_business_check_advice.iloc[0:1000000]
     final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in tmpdf.items()])).fillna("Nan")
     with open('all_data.json', 'w') as f:
         json=js.dumps(final_df.to_dict(orient='records'),indent=0)
         f.write(json)
 
     end = time.time()
+    print("json created")
     print("Time elapsed:", end - start, " seconds")
 
 if __name__ == "__main__":
