@@ -88,7 +88,7 @@ def main():
     file_names = {'review_data.csv', 'business_data.csv', 'user_data.csv', 'check_data.csv', 'advice_data_2.json'}
     concurrent_downloads(file_names)
     df_review_reduced=df_review.drop(['date', 'useful', 'fun', 'cool'], axis=1)
-
+    df_review=None
     df_user_reduced=df_user.drop(
         ["name", 'num_reviews', 'user_since', 'useful', 'fun', 'cool', 'friends', 'average_rating',
          'like_fashion', 'like_extras', 'like_profile', 'like_format'
@@ -103,6 +103,7 @@ def main():
     df_check=None
     df_review_user = df_review_reduced.merge(df_user_reduced,how="inner",on="user_id")
     print("10%")
+    df_review_reduced=None
     df_user_reduced=None
     df_review_user_business=df_review_user.merge(df_business_reduced,how='inner',on="business_id")
     print("25%")
@@ -117,20 +118,20 @@ def main():
     df_advice_reduced=None
     gc.collect()
     #print(df_review_user_business_check_advice)
-    tmpdf=df_review_user_business_check_advice.drop(['review_id','user_id','business_id_x','business_id_y'],axis=1).iloc[0:5000000]
+    tmpdf=df_review_user_business_check_advice.drop(['review_id','user_id','business_id_x','business_id_y'],axis=1).iloc[0:10000000]
     df_review_user_business_check_advice=None
     final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in tmpdf.items()])).fillna("Nan")
+    tmpdf=None
     final_json=final_df.to_dict(orient='records')
-    print(final_df.info())
     print("100%")
     print("Creating the json now...")
     final_df=None
-    tmpdf=None
     gc.collect()
     with open('test.json', 'w') as f:
-        json=js.dumps(final_json,indent=0)
+        json=js.dumps(final_json)
         final_json=None
         f.write(json)
+    json=None
     # final_df=None
     # tmpdf = None
     # tmpdf = df_review_user_business_check_advice.df_review_user_business_check_advice.drop(['review_id','user_id','business_id_x','business_id_y'],axis=1).iloc[3000001:6000000]
