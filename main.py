@@ -10,17 +10,6 @@ import time
 import json as js
 import gc
 
-# df_review=pd.read_csv("review_data.csv",dtype={'review_id':'string','user_id':'string','business_id':'string','rating':'float','useful':'float','fun':'float','cool':'float','description':'string','date':'string'})
-# df_user=pd.read_csv("user_data.csv",dtype={'user_id':'string','name':'string','num_reviews':'int','user_since':'string','useful':'int','fun':'int','cool':'int','expert':'string'
-# ,'friends':'string','followers':'int','average_rating':'float','like_fashion':'string','like_extras':'string','like_profile':'string','like_format':'string'
-# ,'like_list':'string','like_comment':'string','like_simple':'string','like_cool':'string','like_fun':'string','like_texts':'string','like_pics':'string'})
-#
-# df_business=pd.read_csv("business_data.csv",dtype={'business_id':'string','name':'string','address':'string','city':'string',
-# 'state':'string','zipcode':'string','lat':'float','long':'float','rating':'float','num_reviews':'string','open':'string'
-# ,'attributes':'string','categories':'string','hours':'string'})
-#
-# df_check=pd.read_csv("check_data.csv")
-# df_advice=pd.read_json("advice_data_2.json")
 
 def main():
     def read_file(filename):
@@ -58,19 +47,47 @@ def main():
                                                  'rating': 'float', 'num_reviews': 'int16', 'open': 'int8'
                                               , 'attributes': 'string', 'categories': 'string', 'hours': 'string'})
 
-                #df_business.fillna("no value")
-                #print(df_business)
+
             else:
                 nonlocal df_check
                 df_check = pd.read_csv(filename)
-                #df_check.fillna("no value")
-                #print(df_check)
+
         else:
             nonlocal df_advice
             df_advice = pd.read_json(filename)
 
-            #df_advice.fillna("no value")
-            #print(df_advice)
+    def pregunta_1(df):
+        tmpdf = df.drop(['business_id_x', 'user_id', 'review_id', 'business_id_y'], axis=1);del df
+        df_all_open = tmpdf[tmpdf.open == 1];del tmpdf
+        states = []
+        for value in df_all_open.state:
+            if value not in states:
+                states.append(value)
+        for state in states:
+            df_all_open_nc = df_all_open[df_all_open.state == state]
+            df_all_open_nc_good_reviews = df_all_open_nc[df_all_open_nc.rating_y >= 2];del df_all_open_nc
+            final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in df_all_open_nc_good_reviews.items()])).fillna("Nan")
+            good_categories = []
+            for columns in final_df:
+                if columns == "categories":
+                    for value in final_df[columns]:
+                        tmpString = value
+                        for category in tmpString.split(", "):
+                            if category not in good_categories:
+                                good_categories.append(category)
+            i = 0
+            for value in final_df["categories"]:
+                tmpString = value
+                for category in tmpString.split(", "):
+                    if category in good_categories and final_df.iloc[i]["rating_x"] < 4:
+                        good_categories.remove(category)
+                i += 1
+            del final_df
+            print("best categories in ",state,":")
+            print(good_categories)
+            print(len(good_categories))
+
+
     def concurrent_downloads(filenames):
         # choose the number of threads
         threads = min(MAX_THREADS, len(filenames))
@@ -88,61 +105,29 @@ def main():
     file_names = {'review_data.csv', 'business_data.csv', 'user_data.csv', 'check_data.csv', 'advice_data_2.json'}
     concurrent_downloads(file_names)
     df_review_reduced=df_review.drop(['date', 'useful', 'fun', 'cool'], axis=1)
-    df_review=None
+    del df_review
     df_user_reduced=df_user.drop(
         ["name", 'num_reviews', 'user_since', 'useful', 'fun', 'cool', 'friends', 'average_rating',
          'like_fashion', 'like_extras', 'like_profile', 'like_format'
             , 'like_list', 'like_comment', 'like_simple', 'like_cool', 'like_fun', 'like_texts',
          'like_pics'], axis=1)
-    df_user=None
-    df_business_reduced=df_business.drop(['lat', 'long', 'address', 'city', 'hours'], axis=1)
-    df_business=None
-    df_advice_reduced=df_advice.drop(['date'], axis=1)
-    df_advice=None
-    df_check_reduced=df_check.drop('date',axis=1)
-    df_check=None
-    df_review_user = df_review_reduced.merge(df_user_reduced,how="inner",on="user_id")
+    del df_user
+    df_business_reduced=df_business.drop(['lat', 'long', 'address', 'city', 'hours'], axis=1);del df_business
+    df_advice_reduced=df_advice.drop(['date','description'], axis=1);del df_advice
+    df_check_reduced=df_check.drop('date',axis=1);del df_check
+    df_review_user = df_review_reduced.merge(df_user_reduced,how="inner",on="user_id");del df_review_reduced;del df_user_reduced
     print("10%")
-    df_review_reduced=None
-    df_user_reduced=None
-    df_review_user_business=df_review_user.merge(df_business_reduced,how='inner',on="business_id")
+    df_review_user_business=df_review_user.merge(df_business_reduced,how='inner',on="business_id");del df_business_reduced;del df_review_user
     print("25%")
-    df_business_reduced=None
-    df_review_user=None
-    df_review_user_business_check = df_review_user_business.merge(df_check_reduced,how="inner",on="business_id")
+    df_review_user_business_check = df_review_user_business.merge(df_check_reduced,how="inner",on="business_id");del df_check_reduced;del df_review_user_business
     print("50%")
-    df_check_reduced=None
-    df_review_user_business=None
-    df_review_user_business_check_advice = df_review_user_business_check.merge(df_advice_reduced,how="inner",on="user_id")
-    df_review_user_business_check=None
-    df_advice_reduced=None
+    df_review_user_business_check_advice = df_review_user_business_check.merge(df_advice_reduced,how="inner",on="user_id");del df_review_user_business_check;del df_advice_reduced
     gc.collect()
-    #print(df_review_user_business_check_advice)
-    tmpdf=df_review_user_business_check_advice.drop(['review_id','user_id','business_id_x','business_id_y'],axis=1).iloc[0:10000000]
-    df_review_user_business_check_advice=None
-    final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in tmpdf.items()])).fillna("Nan")
-    tmpdf=None
-    final_json=final_df.to_dict(orient='records')
     print("100%")
-    print("Creating the json now...")
-    final_df=None
-    gc.collect()
-    with open('test.json', 'w') as f:
-        json=js.dumps(final_json)
-        final_json=None
-        f.write(json)
-    json=None
-    # final_df=None
-    # tmpdf = None
-    # tmpdf = df_review_user_business_check_advice.df_review_user_business_check_advice.drop(['review_id','user_id','business_id_x','business_id_y'],axis=1).iloc[3000001:6000000]
-    # final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in tmpdf.items()])).fillna("Nan")
-    # tmpdf=None
-    # with open('all_data_2.json', 'w') as f:
-    #     json = js.dumps(final_df.to_dict(orient='records'), indent=0)
-    #     final_df=None
-    #     f.write(json)
+    print("dataframe fully merged")
+    pregunta_1(df_review_user_business_check_advice)
+    del df_review_user_business_check_advice
     end = time.time()
-    print("json created")
     print("Time elapsed:", end - start, " seconds")
 
 if __name__ == "__main__":
