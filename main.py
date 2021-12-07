@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 import time
 import json as js
 import gc
+from collections import Counter
+import numpy as np
+from matplotlib import pyplot as plt
 
 
 def main():
@@ -21,8 +24,6 @@ def main():
                                                'rating': 'float', 'useful': 'float', 'fun': 'float', 'cool': 'float',
                                                'description': 'string', 'date': 'string'})
 
-                #df_review.fillna("No Value")
-                #print(df_review)
             elif "user_data" in filename:
                 nonlocal df_user
                 df_user = pd.read_csv(filename, dtype={'user_id': 'string', 'name': 'string', 'num_reviews': 'int8',
@@ -36,8 +37,6 @@ def main():
                                                               'like_pics': 'int8'})
 
 
-                #df_user.fillna("no value")
-                #print(df_user)
             elif "business_data" in filename:
                 nonlocal df_business
                 df_business = pd.read_csv(filename,
@@ -63,18 +62,17 @@ def main():
         for value in df_all_open.state:
             if value not in states:
                 states.append(value)
+        all_good_categories=[]
         for state in states:
             df_all_open_nc = df_all_open[df_all_open.state == state]
             df_all_open_nc_good_reviews = df_all_open_nc[df_all_open_nc.rating_y >= 2];del df_all_open_nc
             final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in df_all_open_nc_good_reviews.items()])).fillna("Nan")
             good_categories = []
-            for columns in final_df:
-                if columns == "categories":
-                    for value in final_df[columns]:
-                        tmpString = value
-                        for category in tmpString.split(", "):
-                            if category not in good_categories:
-                                good_categories.append(category)
+            for value in final_df["categories"]:
+                tmpString = value
+                for category in tmpString.split(", "):
+                    if category not in good_categories:
+                        good_categories.append(category)
             i = 0
             for value in final_df["categories"]:
                 tmpString = value
@@ -86,6 +84,33 @@ def main():
             print("best categories in ",state,":")
             print(good_categories)
             print(len(good_categories))
+            all_good_categories.append(good_categories)
+
+        print(all_good_categories)
+        plot_categories(all_good_categories)
+
+
+    def plot_categories(categories):
+        all_categories=[]
+        for subarray in categories:
+            for word in subarray:
+                all_categories.append(word)
+        tf = Counter(all_categories)
+        y = [count for tag, count in tf.most_common(20)]
+        x = [tag for tag, count in tf.most_common(20)]
+
+        plt.bar(x, y, color='crimson')
+        plt.title("Term frequencies in the good categories")
+        plt.ylabel("Frequency (log scale)")
+        plt.yscale('log')  # optionally set a log scale for the y-axis
+        plt.xticks(rotation=90)
+        for i, (tag, count) in enumerate(tf.most_common(20)):
+            plt.text(i, count, f' {count} ', rotation=90,
+                     ha='center', va='top' if i < 10 else 'bottom', color='white' if i < 10 else 'black')
+        plt.xlim(-0.6, len(x) - 0.4)  # optionally set tighter x lims
+        plt.tight_layout()  # change the whitespace such that all labels fit nicely
+        plt.show()
+
 
 
     def concurrent_downloads(filenames):
