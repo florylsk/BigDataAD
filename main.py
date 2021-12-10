@@ -127,13 +127,19 @@ def main():
     def analize_data(dataframe):
         tmpdf = dataframe.drop(['business_id_x', 'user_id', 'review_id', 'business_id_y'], axis=1);del dataframe
         states=tmpdf.state.unique()
-        # sns.catplot(x="state", y="rating_y", data=tmpdf, height=50)
-        # plt.show()
         plt.figure(figsize=(16, 6))
         ax = sns.barplot(x='state', y='rating_y',data=tmpdf)
         ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right", fontsize=8)
         plt.title('Distribution of rating per state', fontsize=14, fontweight='bold')
         plt.show()
+
+        plt.figure(figsize=(16, 6))
+        _tmpdf=tmpdf.drop_duplicates(subset=['name'])
+        ax = sns.countplot(x='state',data=_tmpdf)
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right", fontsize=8)
+        plt.title('Number of business per state', fontsize=14, fontweight='bold')
+        plt.show()
+
         # X_cat=tmpdf['categories']
         # X_cat=pd.get_dummies(data=X_cat,drop_first=True)
         # # X_cat.replace(to_replace=pd.NA, value=None, inplace=True)
@@ -172,7 +178,7 @@ def main():
             relative_polarity = total_polarity / len(unique_reviews)
             business_polarity=business_polarity.append({"Business": business, "Polarity": relative_polarity}, ignore_index=True)
 
-        #Most positive reviews
+        #Most negative reviews
         business_polarity=business_polarity.sort_values(by='Polarity')
         polarity_values=business_polarity['Polarity'].head(12)
         business_names=business_polarity['Business'].head(12)
@@ -191,7 +197,7 @@ def main():
         ax.set_title('Top negative reviewed business',
                      loc='left', )
         plt.show()
-        #Most negative reviews
+        #Most positive reviews
         business_polarity = business_polarity.sort_values(by='Polarity', ascending=False)
         polarity_values = business_polarity['Polarity'].head(12)
         business_names = business_polarity['Business'].head(12)
@@ -249,8 +255,8 @@ def main():
     print("100%")
     print("dataframe fully merged")
     #pregunta_1(df_review_user_business_check_advice)
-    #analize_data(df_review_user_business_check_advice)
-    sentiment_analysis(df_review_user_business_check_advice)
+    analize_data(df_review_user_business_check_advice)
+    #sentiment_analysis(df_review_user_business_check_advice)
     del df_review_user_business_check_advice
     end = time.time()
     print("Time elapsed:", end - start, " seconds")
