@@ -1,4 +1,6 @@
 import concurrent.futures
+import sys
+
 import pandas as pd
 import numpy as np
 import dask.dataframe as dd
@@ -27,6 +29,7 @@ from textblob import TextBlob
 
 
 def main():
+    #read the data files with optimized data types
     def read_file(filename):
         if "csv" in filename:
             if "review_data" in filename:
@@ -49,6 +52,8 @@ def main():
                                                               'like_pics': 'int8'})
 
 
+
+
             elif "business_data" in filename:
                 nonlocal df_business
                 df_business = pd.read_csv(filename,
@@ -59,15 +64,22 @@ def main():
                                               , 'attributes': 'string', 'categories': 'string', 'hours': 'string'})
 
 
+
+
             else:
                 nonlocal df_check
                 df_check = pd.read_csv(filename)
+
+
+
 
         else:
             nonlocal df_advice
             df_advice = pd.read_json(filename)
 
-    def pregunta_1(df):
+    #select best categories for each state
+    def category_analyze(df):
+        #Drop the IDs as they do not add information
         tmpdf = df.drop(['business_id_x', 'user_id', 'review_id', 'business_id_y'], axis=1);del df
         df_all_open = tmpdf[tmpdf.open == 1];del tmpdf
         states = []
@@ -76,16 +88,21 @@ def main():
                 states.append(value)
         all_good_categories=[]
         for state in states:
+            #filter the dataframe by each state
             df_all_open_nc = df_all_open[df_all_open.state == state]
+            #filter the dataframe with only reviews with rating greater than 2
             df_all_open_nc_good_reviews = df_all_open_nc[df_all_open_nc.rating_y >= 2];del df_all_open_nc
+            #remove NaNs
             final_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in df_all_open_nc_good_reviews.items()])).fillna("Nan")
             good_categories = []
+            #get a list of the good categories in that state
             for value in final_df["categories"]:
                 tmpString = value
                 for category in tmpString.split(", "):
                     if category not in good_categories:
                         good_categories.append(category)
             i = 0
+            #get a list of the good categories with a business with rating greater than 4
             for value in final_df["categories"]:
                 tmpString = value
                 for category in tmpString.split(", "):
@@ -95,10 +112,12 @@ def main():
             del final_df
             print("best categories in ",state,":")
             print(good_categories)
-            print(len(good_categories))
+            print("Number of categories: ",len(good_categories))
             all_good_categories.append(good_categories)
 
+        print("All good categories:")
         print(all_good_categories)
+        #call the function to plot the good categories
         plot_categories(all_good_categories)
 
 
@@ -110,7 +129,7 @@ def main():
         tf = Counter(all_categories)
         y = [count for tag, count in tf.most_common(20)]
         x = [tag for tag, count in tf.most_common(20)]
-
+        #plot the frequencies of the good categories, getting the most common good categories across states
         plt.bar(x, y, color='crimson')
         plt.title("Term frequencies in the good categories")
         plt.ylabel("Frequency (log scale)")
@@ -125,56 +144,65 @@ def main():
 
 
     def analize_data(dataframe):
+        #drop the IDs as they do not add information
         tmpdf = dataframe.drop(['business_id_x', 'user_id', 'review_id', 'business_id_y'], axis=1);del dataframe
+        #since it's a merged dataframe, we need to filter it so that there are only unique values
         states=tmpdf.state.unique()
+        #plot the average rating across all business per state
         plt.figure(figsize=(16, 6))
         ax = sns.barplot(x='state', y='rating_y',data=tmpdf)
         ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right", fontsize=8)
         plt.title('Distribution of rating per state', fontsize=14, fontweight='bold')
         plt.show()
 
+        #plot the amount of business per state
         plt.figure(figsize=(16, 6))
         _tmpdf=tmpdf.drop_duplicates(subset=['name'])
         ax = sns.countplot(x='state',data=_tmpdf)
         ax.set_xticklabels(ax.get_xticklabels(), rotation=40, ha="right", fontsize=8)
         plt.title('Number of business per state', fontsize=14, fontweight='bold')
         plt.show()
+        #Now we will get a lineal regression predicting the rating for reviews , so we need to drop useless columns
+        tmpdf = tmpdf.drop(['description', 'name', 'state', 'categories','expert','attributes','zipcode'],axis=1)
+        X_cat=tmpdf.drop('rating_y',axis=1)
+        X_cat=pd.get_dummies(data=X_cat,drop_first=True)
+        # X_cat.replace(to_replace=pd.NA, value=None, inplace=True)
+        y_cat=tmpdf['rating_y']
+        # y_cat.replace(to_replace=pd.NA, value=None, inplace=True)
+        # del tmpdf
+        X_train_, X_test_, y_train_, y_test_ = train_test_split(X_cat, y_cat, test_size=0.3, random_state=1)
+        # training the algorythm
 
-        # X_cat=tmpdf['categories']
-        # X_cat=pd.get_dummies(data=X_cat,drop_first=True)
-        # # X_cat.replace(to_replace=pd.NA, value=None, inplace=True)
-        # y_cat=tmpdf['rating_y']
-        # # y_cat.replace(to_replace=pd.NA, value=None, inplace=True)
-        # # del tmpdf
-        # X_train_, X_test_, y_train_, y_test_ = train_test_split(X_cat, y_cat, test_size=0.3, random_state=1)
-        # # training the algorythm
-        #
-        # lr_eval_ = LinearRegression()
-        # lr_eval_.fit(X_train_, y_train_)
-        # # making predictions
-        # y_pred_ = lr_eval_.predict(X_test_)
-        # df_eval_ = pd.DataFrame({'Actual': y_test_, 'Predicted': y_pred_})
-        # print(df_eval_)
-        # # calculating the model metrics
-        #
-        # rmse_eval_ = np.sqrt(metrics.mean_squared_error(y_test_, y_pred_))
-        # r2_eval_ = metrics.mean_squared_error(y_test_, y_pred_)
-        # print('Mean Absolute Error:', metrics.mean_absolute_error(y_test_, y_pred_))
-        # print('Mean Squared Error:', r2_eval_)
-        # print('Root Mean Squared Error:', rmse_eval_)
+        lr_eval_ = LinearRegression()
+        lr_eval_.fit(X_train_, y_train_)
+        # making predictions
+        y_pred_ = lr_eval_.predict(X_test_)
+        df_eval_ = pd.DataFrame({'Actual': y_test_, 'Predicted': y_pred_})
+        print(df_eval_)
+        # calculating the model metrics
+
+        rmse_eval_ = np.sqrt(metrics.mean_squared_error(y_test_, y_pred_))
+        r2_eval_ = metrics.mean_squared_error(y_test_, y_pred_)
+        print('Mean Absolute Error:', metrics.mean_absolute_error(y_test_, y_pred_))
+        print('Mean Squared Error:', r2_eval_)
+        print('Root Mean Squared Error:', rmse_eval_)
 
     def sentiment_analysis(df):
+        #Drop IDs
         tmpdf = df.drop(['business_id_x', 'user_id', 'review_id', 'business_id_y'], axis=1);del df
-        #use business "Be Epic Athletics"
+        #choose only reviews in NC
         tmpdf=tmpdf[tmpdf.state=='NC']
+        #create empty dataframe that will store business and polarity values
         business_polarity = pd.DataFrame(columns=['Business','Polarity'])
         for business in tmpdf['name'].unique():
             businessDF=tmpdf[tmpdf.name==business]
             unique_reviews = businessDF['description'].unique()
             total_polarity = 0
+            #for each review, get the text sentiment from the description aka the actual review
             for review in unique_reviews:
                 tmpBlob = TextBlob(review)
                 total_polarity += tmpBlob.polarity
+            #get the average of the polarity for that business and append to dataframe
             relative_polarity = total_polarity / len(unique_reviews)
             business_polarity=business_polarity.append({"Business": business, "Polarity": relative_polarity}, ignore_index=True)
 
@@ -217,6 +245,14 @@ def main():
                      loc='left', )
         plt.show()
 
+    def exploratory_analysis(df):
+        #plot histogram of the number of reviews written per user
+        #we made a lot of plots in this function, but deleted it since we need to pass a different dataframe each time
+        #so we left this example
+        gc.collect()
+        df=df[df.num_reviews>=0]
+        sns.displot(x="num_reviews",data=df,height=9, aspect=16/9,kde=True)
+        plt.show()
     def concurrent_downloads(filenames):
         # choose the number of threads
         threads = min(MAX_THREADS, len(filenames))
@@ -233,8 +269,10 @@ def main():
     start = time.time()
     file_names = {'review_data.csv', 'business_data.csv', 'user_data.csv', 'check_data.csv', 'advice_data_2.json'}
     concurrent_downloads(file_names)
-    df_review_reduced=df_review.drop(['date', 'useful', 'fun', 'cool'], axis=1)
-    del df_review
+    exploratory_analysis(df_user)
+    print("Exploratory analysis on review data completed")
+    #drop columns that we think are not useful
+    df_review_reduced=df_review.drop(['date', 'useful', 'fun', 'cool'], axis=1);del df_review
     df_user_reduced=df_user.drop(
         ["name", 'num_reviews', 'user_since', 'useful', 'fun', 'cool', 'friends', 'average_rating',
          'like_fashion', 'like_extras', 'like_profile', 'like_format'
@@ -244,6 +282,7 @@ def main():
     df_business_reduced=df_business.drop(['lat', 'long', 'address', 'city', 'hours'], axis=1);del df_business
     df_advice_reduced=df_advice.drop(['date','description'], axis=1);del df_advice
     df_check_reduced=df_check.drop('date',axis=1);del df_check
+    #merge all the dataframes by their IDs
     df_review_user = df_review_reduced.merge(df_user_reduced,how="inner",on="user_id");del df_review_reduced;del df_user_reduced
     print("10%")
     df_review_user_business=df_review_user.merge(df_business_reduced,how='inner',on="business_id");del df_business_reduced;del df_review_user
@@ -254,12 +293,16 @@ def main():
     gc.collect()
     print("100%")
     print("dataframe fully merged")
-    #pregunta_1(df_review_user_business_check_advice)
+    category_analyze(df_review_user_business_check_advice)
+    print("Category analizing completed")
     analize_data(df_review_user_business_check_advice)
-    #sentiment_analysis(df_review_user_business_check_advice)
+    print("General data analizing completed")
+    sentiment_analysis(df_review_user_business_check_advice)
+    print("Review sentiment analysis completed")
+
     del df_review_user_business_check_advice
     end = time.time()
-    print("Time elapsed:", end - start, " seconds")
+    print("Time elapsed:", (end - start)/60, " minutes")
 
 if __name__ == "__main__":
     main()
